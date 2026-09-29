@@ -1,21 +1,173 @@
-fetch(GAS_URL, {
-  method: 'POST',
-  body: JSON.stringify(payload)
-})
-.then(response => response.json())
-.then(data => {
-  const resultMessage = document.getElementById('resultMessage');
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>勤怠打刻システム</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 2px 2px 12px rgba(0,0,0,0.1);
+    }
+    h2 { text-align: center; color: #333; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    .btn-container {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    button {
+      width: 48%;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-in { background-color: #28a745; }
+    .btn-out { background-color: #dc3545; }
+    #resultMessage {
+      margin-top: 20px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    #customNameInput { display: none; margin-top: 10px; }
+  </style>
+</head>
+<body>
 
-  if (data.status === "success") {
-    resultMessage.style.color = "green";
-    resultMessage.textContent = `【${type}】を送信しました！`;
-  } else {
-    // 重複エラーなどが返ってきた場合
-    resultMessage.style.color = "red";
-    resultMessage.textContent = `エラー: ${data.message}`;
-  }
-})
-.catch(error => {
-  console.error(error);
-  alert("通信エラーが発生しました");
-});
+  <h2>勤怠打刻システム</h2>
+
+  <label for="nameSelect">名前</label>
+  <select id="nameSelect" onchange="toggleCustomNameInput()">
+    <option value="">読み込み中...</option>
+  </select>
+  <input type="text" id="customNameInput" placeholder="新しい名前を入力してください">
+
+  <label for="password">パスワード</label>
+  <input type="password" id="password" placeholder="パスワードを入力">
+
+  <label for="note">備考（任意）</label>
+  <input type="text" id="note" placeholder="連絡事項など">
+
+  <div class="btn-container">
+    <button class="btn-in" onclick="sendAttendance('出勤')">出勤</button>
+    <button class="btn-out" onclick="sendAttendance('退勤')">退勤</button>
+  </div>
+
+  <div id="resultMessage"></div>
+
+  <script>
+    // WebアプリのURL（ご自身のGASのURLを指定）
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyI75Lz77aTh6h1wT5x_wz4T9U29E-R84A1s94zO9a_3/exec"; // ※必要に応じて自身のURLに置き換えてください
+
+    // 画面読み込み時に名前リストを取得
+    window.onload = function() {
+      fetch(GAS_URL)
+        .then(res => res.json())
+        .then(data => {
+          const select = document.getElementById("nameSelect");
+          select.innerHTML = '<option value="">選択してください</option>';
+          
+          if (data.names && data.names.length > 0) {
+            data.names.forEach(name => {
+              const option = document.createElement("option");
+              option.value = name;
+              option.textContent = name;
+              select.appendChild(option);
+            });
+          }
+          
+          const newOption = document.createElement("option");
+          newOption.value = "__NEW__";
+          newOption.textContent = "＋ 新しい名前を直接入力する";
+          select.appendChild(newOption);
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById("nameSelect").innerHTML = '<option value="">読み込み失敗</option>';
+        });
+    };
+
+    function toggleCustomNameInput() {
+      const select = document.getElementById("nameSelect");
+      const customInput = document.getElementById("customNameInput");
+      if (select.value === "__NEW__") {
+        customInput.style.display = "block";
+      } else {
+        customInput.style.display = "none";
+      }
+    }
+
+    function sendAttendance(type) {
+      const select = document.getElementById("nameSelect");
+      let name = select.value;
+      
+      if (name === "__NEW__") {
+        name = document.getElementById("customNameInput").value.trim();
+      }
+      
+      const password = document.getElementById("password").value.trim();
+      const note = document.getElementById("note").value.trim();
+      const resultMessage = document.getElementById("resultMessage");
+
+      if (!name) {
+        alert("名前を選択または入力してください。");
+        return;
+      }
+      if (!password) {
+        alert("パスワードを入力してください。");
+        return;
+      }
+
+      resultMessage.style.color = "black";
+      resultMessage.textContent = "送信中...";
+
+      const payload = {
+        name: name,
+        password: password,
+        type: type,
+        note: note
+      };
+
+      fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          resultMessage.style.color = "green";
+          resultMessage.textContent = `【${type}】を送信しました！`;
+        } else {
+          // 重複エラーなどが返ってきた場合
+          resultMessage.style.color = "red";
+          resultMessage.textContent = `エラー: ${data.message}`;
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        resultMessage.style.color = "red";
+        resultMessage.textContent = "送信に失敗しました。";
+      });
+    }
+  </script>
+</body>
+</html>
