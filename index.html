@@ -127,7 +127,7 @@
   <div id="resultMessage"></div>
 
   <script>
-    // 最新のWebアプリURL
+    // WebアプリURL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbz_W5s7U0iY6pL_d9G2k5zXkU13pA11z08tUf/exec";
 
     // 画面読み込み時に名前リストを取得
@@ -230,7 +230,7 @@
         name: name,
         password: password,
         type: type,
-        customTime: customTime, // 指定時間があれば送信
+        customTime: customTime,
         note: note
       };
 
@@ -243,7 +243,7 @@
         if (data.status === "success") {
           resultMessage.style.color = "green";
           resultMessage.textContent = `【${type}】を送信しました！`;
-          document.getElementById("customTimeGroup").style.display = "none"; // 成功したら時間指定欄を閉じる
+          document.getElementById("customTimeGroup").style.display = "none";
           document.getElementById("customTimeInput").value = "";
         } else {
           resultMessage.style.color = "red";
