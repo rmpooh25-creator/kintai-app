@@ -25,12 +25,28 @@
       border-radius: 4px;
       font-size: 16px;
     }
+    .password-container {
+      position: relative;
+      width: 100%;
+    }
+    .password-container input {
+      padding-right: 40px;
+    }
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      user-select: none;
+      font-size: 18px;
+    }
     .btn-container {
       display: flex;
       justify-content: space-between;
       margin-top: 20px;
     }
-    button {
+    button.btn-submit {
       width: 48%;
       padding: 12px;
       font-size: 16px;
@@ -48,34 +64,56 @@
       font-weight: bold;
       font-size: 16px;
     }
-    #customNameInput { display: none; margin-top: 10px; }
+    #customNameGroup, #confirmPasswordGroup {
+      display: none;
+    }
   </style>
 </head>
 <body>
 
   <h2>勤怠打刻システム</h2>
 
+  <!-- 名前選択 -->
   <label for="nameSelect">名前</label>
-  <select id="nameSelect" onchange="toggleCustomNameInput()">
+  <select id="nameSelect" onchange="toggleCustomFields()">
     <option value="">読み込み中...</option>
   </select>
-  <input type="text" id="customNameInput" placeholder="新しい名前を入力してください">
 
+  <!-- 新規名前入力（非表示領域） -->
+  <div id="customNameGroup">
+    <input type="text" id="customNameInput" placeholder="新しい名前を入力してください">
+  </div>
+
+  <!-- パスワード入力（👁マーク付き） -->
   <label for="password">パスワード</label>
-  <input type="password" id="password" placeholder="パスワードを入力">
+  <div class="password-container">
+    <input type="password" id="password" placeholder="パスワードを入力">
+    <span class="toggle-password" onclick="togglePasswordVisibility('password', this)">👁️</span>
+  </div>
 
+  <!-- 新規用パスワード確認（非表示領域） -->
+  <div id="confirmPasswordGroup">
+    <label for="confirmPassword">パスワード（確認用）</label>
+    <div class="password-container">
+      <input type="password" id="confirmPassword" placeholder="もう一度パスワードを入力">
+      <span class="toggle-password" onclick="togglePasswordVisibility('confirmPassword', this)">👁️</span>
+    </div>
+  </div>
+
+  <!-- 備考 -->
   <label for="note">備考（任意）</label>
   <input type="text" id="note" placeholder="連絡事項など">
 
+  <!-- 打刻ボタン -->
   <div class="btn-container">
-    <button class="btn-in" onclick="sendAttendance('出勤')">出勤</button>
-    <button class="btn-out" onclick="sendAttendance('退勤')">退勤</button>
+    <button class="btn-submit btn-in" onclick="sendAttendance('出勤')">出勤</button>
+    <button class="btn-submit btn-out" onclick="sendAttendance('退勤')">退勤</button>
   </div>
 
   <div id="resultMessage"></div>
 
   <script>
-    // 最新のWebアプリURL（バージョン9）
+    // 最新のWebアプリURL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
     // 画面読み込み時に名前リストを取得
@@ -106,28 +144,49 @@
         });
     };
 
-    function toggleCustomNameInput() {
+    // 新規登録時の入力欄表示切替
+    function toggleCustomFields() {
       const select = document.getElementById("nameSelect");
-      const customInput = document.getElementById("customNameInput");
+      const customNameGroup = document.getElementById("customNameGroup");
+      const confirmPasswordGroup = document.getElementById("confirmPasswordGroup");
+      
       if (select.value === "__NEW__") {
-        customInput.style.display = "block";
+        customNameGroup.style.display = "block";
+        confirmPasswordGroup.style.display = "block";
       } else {
-        customInput.style.display = "none";
+        customNameGroup.style.display = "none";
+        confirmPasswordGroup.style.display = "none";
       }
     }
 
+    // パスワードの伏字切り替え（👁）
+    function togglePasswordVisibility(inputId, toggleIcon) {
+      const input = document.getElementById(inputId);
+      if (input.type === "password") {
+        input.type = "text";
+        toggleIcon.textContent = "🙈";
+      } else {
+        input.type = "password";
+        toggleIcon.textContent = "👁️";
+      }
+    }
+
+    // 打刻送信処理
     function sendAttendance(type) {
       const select = document.getElementById("nameSelect");
       let name = select.value;
+      const isNewUser = (name === "__NEW__");
       
-      if (name === "__NEW__") {
+      if (isNewUser) {
         name = document.getElementById("customNameInput").value.trim();
       }
       
       const password = document.getElementById("password").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword").value.trim();
       const note = document.getElementById("note").value.trim();
       const resultMessage = document.getElementById("resultMessage");
 
+      // バリデーションチェック
       if (!name) {
         alert("名前を選択または入力してください。");
         return;
@@ -135,6 +194,19 @@
       if (!password) {
         alert("パスワードを入力してください。");
         return;
+      }
+
+      // 新規登録時のパスワード一致チェック
+      if (isNewUser) {
+        if (!confirmPassword) {
+          alert("確認用パスワードを入力してください。");
+          return;
+        }
+        if (password !== confirmPassword) {
+          resultMessage.style.color = "red";
+          resultMessage.textContent = "エラー: パスワードが一致しません。";
+          return;
+        }
       }
 
       resultMessage.style.color = "black";
@@ -157,7 +229,6 @@
           resultMessage.style.color = "green";
           resultMessage.textContent = `【${type}】を送信しました！`;
         } else {
-          // 重複エラーなどが返ってきた場合
           resultMessage.style.color = "red";
           resultMessage.textContent = `エラー: ${data.message}`;
         }
