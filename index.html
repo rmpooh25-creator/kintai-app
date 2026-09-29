@@ -14,14 +14,13 @@
     #message { margin-top: 15px; font-weight: bold; text-align: center; }
     .confirm-group { display: none; }
     
-    /* パスワード＋👁マーク用スタイル */
     .password-wrapper {
       position: relative;
       display: flex;
       align-items: center;
     }
     .password-wrapper input {
-      padding-right: 40px; /* アイコン分の隙間を確保 */
+      padding-right: 40px;
     }
     .toggle-eye {
       position: absolute;
@@ -40,7 +39,7 @@
 
   <label for="nameSelect">名前</label>
   <select id="nameSelect" onchange="handleNameChange()">
-    <option value="">選択してください</option>
+    <option value="">読み込み中...</option>
     <option value="__NEW__">＋ 新しい名前を直接入力する</option>
   </select>
   <input type="text" id="customName" placeholder="お名前を入力" style="display:none; margin-top:5px;">
@@ -52,7 +51,7 @@
     <span class="toggle-eye" onclick="togglePassword('password', this)">👁️</span>
   </div>
 
-  <!-- 新規作成時のみ表示するパスワード確認欄 -->
+  <!-- 新規作成時のみ表示する確認用パスワード欄 -->
   <div id="confirmGroup" class="confirm-group">
     <label for="passwordConfirm">パスワード（確認用）</label>
     <div class="password-wrapper">
@@ -70,10 +69,41 @@
   <div id="message"></div>
 
   <script>
-    // 正しいGASウェブアプリURLに更新しました
     const GAS_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
-    // パスワードの表示・非表示切り替え機能
+    // 画面開いた時に名前リストをGASから取得
+    window.onload = function() {
+      loadNames();
+    };
+
+    function loadNames() {
+      fetch(GAS_URL)
+        .then(res => res.json())
+        .then(data => {
+          const select = document.getElementById("nameSelect");
+          select.innerHTML = `
+            <option value="">選択してください</option>
+            <option value="__NEW__">＋ 新しい名前を直接入力する</option>
+          `;
+          if (data && data.names) {
+            data.names.forEach(name => {
+              const opt = document.createElement("option");
+              opt.value = name;
+              opt.textContent = name;
+              select.appendChild(opt);
+            });
+          }
+        })
+        .catch(err => {
+          console.error("名前取得エラー:", err);
+          const select = document.getElementById("nameSelect");
+          select.innerHTML = `
+            <option value="">選択してください</option>
+            <option value="__NEW__">＋ 新しい名前を直接入力する</option>
+          `;
+        });
+    }
+
     function togglePassword(inputId, eyeIcon) {
       const input = document.getElementById(inputId);
       if (input.type === "password") {
@@ -85,15 +115,18 @@
       }
     }
 
+    // 名前選択切り替え時の制御
     function handleNameChange() {
       const select = document.getElementById("nameSelect");
       const customInput = document.getElementById("customName");
       const confirmGroup = document.getElementById("confirmGroup");
 
       if (select.value === "__NEW__") {
+        // 新規登録の場合：手入力欄と確認用パスワードを表示
         customInput.style.display = "block";
         confirmGroup.style.display = "block";
       } else {
+        // 登録済み選択の場合：確認用パスワードを非表示
         customInput.style.display = "none";
         confirmGroup.style.display = "none";
       }
@@ -120,6 +153,7 @@
         return;
       }
 
+      // 新規ユーザーのみ確認用パスワードの一致チェック
       if (isNewUser) {
         if (!passwordConfirm) {
           msgDiv.style.color = "red";
@@ -148,6 +182,9 @@
         document.getElementById("password").value = "";
         document.getElementById("passwordConfirm").value = "";
         document.getElementById("note").value = "";
+        
+        // 打刻後、名前リストを最新状態に再読み込み
+        loadNames();
       })
       .catch(err => {
         msgDiv.style.color = "red";
