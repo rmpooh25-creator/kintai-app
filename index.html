@@ -1,102 +1,93 @@
-function doPost(e) {
-  try {
-    const data = JSON.parse(e.postData.contents);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>勤怠打刻システム</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+    h2 { text-align: center; }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, select, textarea, button { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; }
+    button { background-color: #4CAF50; color: white; border: none; font-size: 16px; margin-top: 15px; cursor: pointer; border-radius: 4px; }
+    button.clock-out { background-color: #f44336; }
+    #message { margin-top: 15px; font-weight: bold; text-align: center; }
+  </style>
+</head>
+<body>
 
-    // 1. パスワード管理シートの取得（無ければ自動作成）
-    let passSheet = ss.getSheetByName("パスワード管理");
-    if (!passSheet) {
-      passSheet = ss.insertSheet("パスワード管理");
-      passSheet.appendRow(["名前", "パスワード"]);
-    }
+  <h2>勤怠打刻システム</h2>
 
-    const name = data.name ? data.name.trim() : "";
-    const password = data.password ? data.password.trim() : "";
-    const type = data.type; // 出勤 または 退勤
-    const note = data.note || "";
+  <label for="nameSelect">名前</label>
+  <select id="nameSelect" onchange="toggleCustomName()">
+    <option value="">選択してください</option>
+    <option value="__NEW__">＋ 新しい名前を直接入力する</option>
+  </select>
+  <input type="text" id="customName" placeholder="お名前を入力" style="display:none; margin-top:5px;">
 
-    if (!name || !password) {
-      return responseJSON({ status: "error", message: "名前とパスワードを入力してください。" });
-    }
+  <label for="password">パスワード</label>
+  <input type="password" id="password" placeholder="パスワードを入力">
 
-    // 2. パスワード認証・新規ユーザー登録
-    const passData = passSheet.getDataRange().getValues();
-    let userRow = -1;
-    for (let i = 1; i < passData.length; i++) {
-      if (passData[i][0] === name) {
-        userRow = i + 1;
-        break;
-      }
-    }
+  <label for="note">備考（任意）</label>
+  <textarea id="note" rows="2" placeholder="連絡事項など"></textarea>
 
-    if (userRow === -1) {
-      // 新規登録
-      passSheet.appendRow([name, password]);
-    } else {
-      // パスワードチェック
-      const savedPass = passData[userRow - 1][1].toString();
-      if (savedPass !== password) {
-        return responseJSON({ status: "error", message: "パスワードが正しくありません。" });
-      }
-    }
+  <button onclick="submitData('出勤')">出勤</button>
+  <button class="clock-out" onclick="submitData('退勤')">退勤</button>
 
-    // 3. 個人用シートの取得（無ければ「テンプレート」を複製して自動作成）
-    let userSheet = ss.getSheetByName(name);
-    if (!userSheet) {
-      const templateSheet = ss.getSheetByName("テンプレート");
-      if (templateSheet) {
-        userSheet = templateSheet.copyTo(ss).setName(name);
+  <div id="message"></div>
+
+  <script>
+    // デプロイしたGASのウェブアプリURL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwefK7L298a8q1hGOfN33wNfB4z2t108H0G33zQ1060_example/exec"; // ※ご自身のGAS URL
+
+    function toggleCustomName() {
+      const select = document.getElementById("nameSelect");
+      const customInput = document.getElementById("customName");
+      if (select.value === "__NEW__") {
+        customInput.style.display = "block";
       } else {
-        userSheet = ss.insertSheet(name);
-        userSheet.appendRow(["日時", "区分", "実働時間", "備考"]);
+        customInput.style.display = "none";
       }
     }
 
-    // 4. 打刻日時と実働時間の計算
-    const now = new Date();
-    let workTimeStr = "";
+    function submitData(type) {
+      const select = document.getElementById("nameSelect");
+      const customInput = document.getElementById("customName");
+      let name = select.value;
+      if (name === "__NEW__") {
+        name = customInput.value.trim();
+      }
+      
+      const password = document.getElementById("password").value.trim();
+      const note = document.getElementById("note").value.trim();
+      const msgDiv = document.getElementById("message");
 
-    if (type === "退勤") {
-      const userData = userSheet.getDataRange().getValues();
-      const todayStr = Utilities.formatDate(now, "Asia/Tokyo", "yyyy/MM/dd");
-      let lastInTime = null;
-
-      for (let i = userData.length - 1; i >= 1; i--) {
-        const rowDate = userData[i][0];
-        const rowType = userData[i][1];
-
-        if (rowType === "出勤" && rowDate instanceof Date) {
-          const rowDateStr = Utilities.formatDate(rowDate, "Asia/Tokyo", "yyyy/MM/dd");
-          if (rowDateStr === todayStr) {
-            lastInTime = rowDate;
-            break;
-          }
-        }
+      if (!name || !password) {
+        msgDiv.style.color = "red";
+        msgDiv.innerText = "名前とパスワードを入力してください。";
+        return;
       }
 
-      if (lastInTime) {
-        const diffMs = now.getTime() - lastInTime.getTime();
-        const totalMinutes = Math.floor(diffMs / (1000 * 60));
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        workTimeStr = hours + "時間" + minutes + "分";
-      }
+      msgDiv.style.color = "black";
+      msgDiv.innerText = "送信中...";
+
+      fetch(GAS_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name, password: password, type: type, note: note })
+      })
+      .then(() => {
+        msgDiv.style.color = "green";
+        msgDiv.innerText = "【" + type + "】を送信しました！";
+        document.getElementById("password").value = "";
+        document.getElementById("note").value = "";
+      })
+      .catch(err => {
+        msgDiv.style.color = "red";
+        msgDiv.innerText = "エラーが発生しました: " + err;
+      });
     }
-
-    // 5. 個人用シートの末尾に書き込み
-    userSheet.appendRow([now, type, workTimeStr, note]);
-
-    return responseJSON({
-      status: "success",
-      message: "【" + type + "】を受け付けました！" + (workTimeStr ? "（本日の勤務時間: " + workTimeStr + "）" : "")
-    });
-
-  } catch (err) {
-    return responseJSON({ status: "error", message: err.toString() });
-  }
-}
-
-function responseJSON(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+  </script>
+</body>
+</html>
