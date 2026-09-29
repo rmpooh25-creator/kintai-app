@@ -127,7 +127,7 @@
   <div id="resultMessage"></div>
 
   <script>
-    // WebアプリURL（最新版に更新済み）
+    // WebアプリURL（最新版）
     const GAS_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
     // 画面読み込み時に名前リストを取得
@@ -249,7 +249,6 @@
           resultMessage.style.color = "red";
           resultMessage.textContent = `エラー: ${data.message}`;
 
-          // 未出勤の退勤エラー時のみ「時間修正入力欄」を表示する
           if (data.message.includes("出勤打刻されていません")) {
             document.getElementById("customTimeGroup").style.display = "block";
           }
