@@ -182,7 +182,7 @@
       }
       
       const password = document.getElementById("password").value.trim();
-      const confirmPassword = document.getElementById("confirmPassword").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword") ? document.getElementById("confirmPassword").value.trim() : "";
       const note = document.getElementById("note").value.trim();
       const resultMessage = document.getElementById("resultMessage");
 
@@ -229,6 +229,7 @@
           resultMessage.style.color = "green";
           resultMessage.textContent = `【${type}】を送信しました！`;
         } else {
+          // エラー時（未出勤時の退勤エラー含む）は赤文字で表示
           resultMessage.style.color = "red";
           resultMessage.textContent = `エラー: ${data.message}`;
         }
