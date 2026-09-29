@@ -12,6 +12,26 @@
     button { background-color: #4CAF50; color: white; border: none; font-size: 16px; margin-top: 15px; cursor: pointer; border-radius: 4px; }
     button.clock-out { background-color: #f44336; }
     #message { margin-top: 15px; font-weight: bold; text-align: center; }
+    .confirm-group { display: none; }
+    
+    /* パスワード＋👁マーク用スタイル */
+    .password-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .password-wrapper input {
+      padding-right: 40px; /* アイコン分の隙間を確保 */
+    }
+    .toggle-eye {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      user-select: none;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
@@ -19,14 +39,27 @@
   <h2>勤怠打刻システム</h2>
 
   <label for="nameSelect">名前</label>
-  <select id="nameSelect" onchange="toggleCustomName()">
+  <select id="nameSelect" onchange="handleNameChange()">
     <option value="">選択してください</option>
     <option value="__NEW__">＋ 新しい名前を直接入力する</option>
   </select>
   <input type="text" id="customName" placeholder="お名前を入力" style="display:none; margin-top:5px;">
 
+  <!-- パスワード入力欄 -->
   <label for="password">パスワード</label>
-  <input type="password" id="password" placeholder="パスワードを入力">
+  <div class="password-wrapper">
+    <input type="password" id="password" placeholder="パスワードを入力">
+    <span class="toggle-eye" onclick="togglePassword('password', this)">👁️</span>
+  </div>
+
+  <!-- 新規作成時のみ表示するパスワード確認欄 -->
+  <div id="confirmGroup" class="confirm-group">
+    <label for="passwordConfirm">パスワード（確認用）</label>
+    <div class="password-wrapper">
+      <input type="password" id="passwordConfirm" placeholder="もう一度パスワードを入力">
+      <span class="toggle-eye" onclick="togglePassword('passwordConfirm', this)">👁️</span>
+    </div>
+  </div>
 
   <label for="note">備考（任意）</label>
   <textarea id="note" rows="2" placeholder="連絡事項など"></textarea>
@@ -37,35 +70,67 @@
   <div id="message"></div>
 
   <script>
-    // デプロイしたGASのウェブアプリURL
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwefK7L298a8q1hGOfN33wNfB4z2t108H0G33zQ1060_example/exec"; // ※ご自身のGAS URL
+    // ★ご自身のGASウェブアプリURLを貼り付けてください
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwefK7L298a8q1hGOfN33wNfB4z2t108H0G33zQ1060_example/exec";
 
-    function toggleCustomName() {
+    // パスワードの表示・非表示切り替え機能
+    function togglePassword(inputId, eyeIcon) {
+      const input = document.getElementById(inputId);
+      if (input.type === "password") {
+        input.type = "text";
+        eyeIcon.textContent = "🙈"; // 見えている状態の時は見ざるアイコン（またはそのまま👁️）
+      } else {
+        input.type = "password";
+        eyeIcon.textContent = "👁️";
+      }
+    }
+
+    function handleNameChange() {
       const select = document.getElementById("nameSelect");
       const customInput = document.getElementById("customName");
+      const confirmGroup = document.getElementById("confirmGroup");
+
       if (select.value === "__NEW__") {
         customInput.style.display = "block";
+        confirmGroup.style.display = "block";
       } else {
         customInput.style.display = "none";
+        confirmGroup.style.display = "none";
       }
     }
 
     function submitData(type) {
       const select = document.getElementById("nameSelect");
       const customInput = document.getElementById("customName");
-      let name = select.value;
-      if (name === "__NEW__") {
-        name = customInput.value.trim();
-      }
-      
       const password = document.getElementById("password").value.trim();
+      const passwordConfirm = document.getElementById("passwordConfirm").value.trim();
       const note = document.getElementById("note").value.trim();
       const msgDiv = document.getElementById("message");
+
+      let name = select.value;
+      const isNewUser = (name === "__NEW__");
+
+      if (isNewUser) {
+        name = customInput.value.trim();
+      }
 
       if (!name || !password) {
         msgDiv.style.color = "red";
         msgDiv.innerText = "名前とパスワードを入力してください。";
         return;
+      }
+
+      if (isNewUser) {
+        if (!passwordConfirm) {
+          msgDiv.style.color = "red";
+          msgDiv.innerText = "確認用パスワードを入力してください。";
+          return;
+        }
+        if (password !== passwordConfirm) {
+          msgDiv.style.color = "red";
+          msgDiv.innerText = "パスワードが一致しません。";
+          return;
+        }
       }
 
       msgDiv.style.color = "black";
@@ -81,6 +146,7 @@
         msgDiv.style.color = "green";
         msgDiv.innerText = "【" + type + "】を送信しました！";
         document.getElementById("password").value = "";
+        document.getElementById("passwordConfirm").value = "";
         document.getElementById("note").value = "";
       })
       .catch(err => {
