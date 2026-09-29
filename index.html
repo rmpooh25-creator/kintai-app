@@ -70,15 +70,15 @@
   <div id="message"></div>
 
   <script>
-    // ★ご自身のGASウェブアプリURLを貼り付けてください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwefK7L298a8q1hGOfN33wNfB4z2t108H0G33zQ1060_example/exec";
+    // 正しいGASウェブアプリURLに更新しました
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
     // パスワードの表示・非表示切り替え機能
     function togglePassword(inputId, eyeIcon) {
       const input = document.getElementById(inputId);
       if (input.type === "password") {
         input.type = "text";
-        eyeIcon.textContent = "🙈"; // 見えている状態の時は見ざるアイコン（またはそのまま👁️）
+        eyeIcon.textContent = "🙈";
       } else {
         input.type = "password";
         eyeIcon.textContent = "👁️";
