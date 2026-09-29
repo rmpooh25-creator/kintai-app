@@ -64,8 +64,15 @@
       font-weight: bold;
       font-size: 16px;
     }
-    #customNameGroup, #confirmPasswordGroup {
+    #customNameGroup, #confirmPasswordGroup, #customTimeGroup {
       display: none;
+    }
+    #customTimeGroup {
+      background-color: #fff3cd;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ffeeba;
+      margin-top: 15px;
     }
   </style>
 </head>
@@ -100,6 +107,13 @@
     </div>
   </div>
 
+  <!-- 時間修正入力（未出勤の退勤エラー時に表示） -->
+  <div id="customTimeGroup">
+    <label for="customTimeInput" style="margin-top:0; color:#856404;">✏️ 修正出勤時間（例: 09:00）</label>
+    <input type="time" id="customTimeInput">
+    <small style="color:#856404; display:block; margin-top:3px;">※空欄の場合は現在時刻で出勤打刻されます</small>
+  </div>
+
   <!-- 備考 -->
   <label for="note">備考（任意）</label>
   <input type="text" id="note" placeholder="連絡事項など">
@@ -114,7 +128,7 @@
 
   <script>
     // 最新のWebアプリURL
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbz_W5s7U0iY6pL_d9G2k5zXkU13pA11z08tUf/exec"; // ※要確認
 
     // 画面読み込み時に名前リストを取得
     window.onload = function() {
@@ -183,6 +197,7 @@
       
       const password = document.getElementById("password").value.trim();
       const confirmPassword = document.getElementById("confirmPassword") ? document.getElementById("confirmPassword").value.trim() : "";
+      const customTime = document.getElementById("customTimeInput").value;
       const note = document.getElementById("note").value.trim();
       const resultMessage = document.getElementById("resultMessage");
 
@@ -196,7 +211,6 @@
         return;
       }
 
-      // 新規登録時のパスワード一致チェック
       if (isNewUser) {
         if (!confirmPassword) {
           alert("確認用パスワードを入力してください。");
@@ -216,6 +230,7 @@
         name: name,
         password: password,
         type: type,
+        customTime: customTime, // 指定時間があれば送信
         note: note
       };
 
@@ -228,10 +243,16 @@
         if (data.status === "success") {
           resultMessage.style.color = "green";
           resultMessage.textContent = `【${type}】を送信しました！`;
+          document.getElementById("customTimeGroup").style.display = "none"; // 成功したら時間指定欄を閉じる
+          document.getElementById("customTimeInput").value = "";
         } else {
-          // エラー時（未出勤時の退勤エラー含む）は赤文字で表示
           resultMessage.style.color = "red";
           resultMessage.textContent = `エラー: ${data.message}`;
+
+          // 未出勤の退勤エラー時のみ「時間修正入力欄」を表示する
+          if (data.message.includes("出勤打刻されていません")) {
+            document.getElementById("customTimeGroup").style.display = "block";
+          }
         }
       })
       .catch(error => {
