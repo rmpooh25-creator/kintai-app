@@ -10,8 +10,25 @@
     h2 { text-align: center; color: #333; margin-top: 0; margin-bottom: 20px; }
     label { font-weight: bold; display: block; margin-top: 15px; margin-bottom: 6px; color: #555; }
     select, input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; background-color: #fafafa; }
+    
+    /* パスワード入力エリアのレイアウト調整 */
+    .password-wrapper { position: relative; width: 100%; }
+    .password-wrapper input { padding-right: 48px; }
+    .toggle-pass {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0;
+      color: #666;
+    }
+
     .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
-    button { padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    button.btn-in, button.btn-out { padding: 16px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
     .btn-in { background: #28a745; color: white; }
     .btn-out { background: #dc3545; color: white; }
     #msg { margin-top: 20px; text-align: center; font-weight: bold; font-size: 15px; min-height: 24px; }
@@ -35,7 +52,10 @@
   </div>
 
   <label for="password">パスワード</label>
-  <input type="password" id="password" placeholder="パスワードを入力">
+  <div class="password-wrapper">
+    <input type="password" id="password" placeholder="パスワードを入力">
+    <button type="button" class="toggle-pass" onclick="togglePasswordVisibility()">👁️</button>
+  </div>
   <div class="small-info">※初めて入力するお名前の場合は、入力したパスワードが新規登録されます。</div>
 
   <label for="note">備考（任意）</label>
@@ -50,12 +70,21 @@
 </div>
 
 <script>
-  // 最新のGASデプロイURLをセット済み
   const GAS_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
   window.onload = function() {
     loadSavedNames();
   };
+
+  // パスワードの表示/非表示切り替え
+  function togglePasswordVisibility() {
+    const passInput = document.getElementById('password');
+    if (passInput.type === 'password') {
+      passInput.type = 'text';
+    } else {
+      passInput.type = 'password';
+    }
+  }
 
   function toggleNameInput(select) {
     const customBox = document.getElementById('customNameBox');
