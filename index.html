@@ -1,176 +1,208 @@
-function doGet(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let passSheet = ss.getSheetByName("パスワード管理");
-  
-  if (!passSheet) {
-    passSheet = ss.insertSheet("パスワード管理");
-    passSheet.appendRow(["名前", "パスワード"]);
-    return ContentService.createTextOutput(JSON.stringify({ names: [] }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-  
-  const data = passSheet.getDataRange().getValues();
-  const names = [];
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0]) {
-      names.push(String(data[i][0]));
-    }
-  }
-  
-  return ContentService.createTextOutput(JSON.stringify({ names: names }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勤怠打刻システム</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #555;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .btn-container {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #fff;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .btn-in {
+            background-color: #2e7d32;
+        }
+        .btn-out {
+            background-color: #c62828;
+        }
+        #message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
 
-function doPost(e) {
-  try {
-    const data = JSON.parse(e.postData.contents);
-    const name = data.name;
-    const password = data.password;
-    const type = data.type; // "出勤" または "退勤"
-    const customTime = data.customTime; // 手動入力時間
-    const note = data.note || "";
+<div class="container">
+    <h2>勤怠打刻システム</h2>
     
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    // 1. パスワード管理シートの確認・検証・新規登録
-    let passSheet = ss.getSheetByName("パスワード管理");
-    if (!passSheet) {
-      passSheet = ss.insertSheet("パスワード管理");
-      passSheet.appendRow(["名前", "パスワード"]);
-    }
-    
-    const passData = passSheet.getDataRange().getValues();
-    let userExists = false;
-    let passwordMatched = false;
-    
-    for (let i = 1; i < passData.length; i++) {
-      if (passData[i][0] === name) {
-        userExists = true;
-        if (String(passData[i][1]) === String(password)) {
-          passwordMatched = true;
+    <div class="form-group">
+        <label for="name">名前</label>
+        <input type="text" id="name" list="name-list" placeholder="名前を入力または選択">
+        <datalist id="name-list"></datalist>
+    </div>
+
+    <div class="form-group">
+        <label for="password">パスワード</label>
+        <input type="password" id="password" placeholder="パスワードを入力">
+    </div>
+
+    <div class="form-group">
+        <label for="note">備考（任意）</label>
+        <input type="text" id="note" placeholder="連絡事項など">
+    </div>
+
+    <div class="btn-container">
+        <button class="btn-in" onclick="submitAttendance('出勤')">出勤</button>
+        <button class="btn-out" onclick="submitAttendance('退勤')">退勤</button>
+    </div>
+
+    <div id="message"></div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
+
+    window.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const data = await response.json();
+            if (data.names && Array.isArray(data.names)) {
+                const datalist = document.getElementById("name-list");
+                datalist.innerHTML = "";
+                data.names.forEach(name => {
+                    const option = document.createElement("option");
+                    option.value = name;
+                    datalist.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error("名前一覧の取得に失敗しました:", error);
         }
-        break;
-      }
-    }
-    
-    if (!userExists) {
-      passSheet.appendRow([name, password]);
-    } else if (!passwordMatched) {
-      return ContentService.createTextOutput(JSON.stringify({
-        status: "error",
-        message: "パスワードが間違っています。"
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    // 2. 個人シートの取得・作成処理（テンプレート複製または新規作成）
-    let userSheet = ss.getSheetByName(name);
-    if (!userSheet) {
-      const templateSheet = ss.getSheetByName("テンプレート");
-      if (templateSheet) {
-        userSheet = templateSheet.copyTo(ss);
-        userSheet.setName(name);
-      } else {
-        userSheet = ss.insertSheet(name);
-        userSheet.appendRow(["日付", "打刻者", "出勤時間", "退勤時間", "実働時間", "備考"]);
-      }
-    }
-    
-    // 3. JST基準の日付と時間の取得
-    const now = new Date();
-    const targetYear = now.getFullYear();
-    const targetMonth = now.getMonth();
-    const targetDate = now.getDate();
-    
-    const dateStr = Utilities.formatDate(now, "JST", "yyyy/MM/dd");
-    let timeStr = Utilities.formatDate(now, "JST", "HH:mm:ss");
-    
-    if (customTime) {
-      // 修正時間のフォーマット整合性を保持
-      timeStr = customTime.length === 5 ? customTime + ":00" : customTime;
-    }
-    
-    const rows = userSheet.getDataRange().getValues();
-    
-    // 日付が一致するか判定する安全なヘルパー関数
-    function isSameDate(cellValue) {
-      if (!cellValue) return false;
-      let d;
-      if (cellValue instanceof Date) {
-        d = cellValue;
-      } else {
-        d = new Date(cellValue);
-      }
-      if (isNaN(d.getTime())) {
-        return String(cellValue).includes(dateStr);
-      }
-      return d.getFullYear() === targetYear && d.getMonth() === targetMonth && d.getDate() === targetDate;
-    }
-    
-    // 本日の既存行を検索 (A列=日付, B列=打刻者, C列=出勤時間, D列=退勤時間, E列=実働時間, F列=備考)
-    let todayRowIndex = -1;
-    for (let i = 1; i < rows.length; i++) {
-      if (isSameDate(rows[i][0])) {
-        todayRowIndex = i + 1; // 1-indexedの行番号
-        break;
-      }
-    }
-    
-    if (type === "出勤") {
-      if (todayRowIndex !== -1) {
-        if (rows[todayRowIndex - 1][2] && !customTime) {
-          return ContentService.createTextOutput(JSON.stringify({
-            status: "error",
-            message: "すでに本日の出勤打刻が完了しています。"
-          })).setMimeType(ContentService.MimeType.JSON);
+    });
+
+    async function submitAttendance(type, customTime = null, additionalNote = "") {
+        const name = document.getElementById("name").value.trim();
+        const password = document.getElementById("password").value.trim();
+        let note = document.getElementById("note").value.trim();
+
+        if (!name || !password) {
+            showMessage("名前とパスワードを入力してください。", "error");
+            return;
         }
-        userSheet.getRange(todayRowIndex, 3).setValue(timeStr);
-        let currentNote = rows[todayRowIndex - 1][5] || "";
+
+        if (additionalNote) {
+            note = (note ? note + " " : "") + additionalNote;
+        }
+
+        const payload = {
+            name: name,
+            password: password,
+            type: type,
+            note: note
+        };
+
         if (customTime) {
-          currentNote = currentNote ? currentNote + " 【出勤修正済】" : "【出勤修正済】";
+            payload.customTime = customTime;
         }
-        if (note) currentNote = currentNote ? currentNote + " " + note : note;
-        userSheet.getRange(todayRowIndex, 6).setValue(currentNote);
-      } else {
-        const newRowIdx = rows.length + 1;
-        const formula = `=IF(AND(C${newRowIdx}<>"", D${newRowIdx}<>""), D${newRowIdx}-C${newRowIdx}, "")`;
-        const finalNote = customTime ? (note ? note + " 【出勤修正済】" : "【出勤修正済】") : note;
-        userSheet.appendRow([dateStr, name, timeStr, "", formula, finalNote]);
-      }
-      
-    } else if (type === "退勤") {
-      // 未打刻チェック（ご要望のエラーメッセージ）
-      if (todayRowIndex === -1 || !rows[todayRowIndex - 1][2]) {
-        return ContentService.createTextOutput(JSON.stringify({
-          status: "error",
-          message: "エラー: 本日の出勤打刻がされていません。「出勤打刻を修正してから退勤してください。※一回のみ」"
-        })).setMimeType(ContentService.MimeType.JSON);
-      }
-      
-      if (rows[todayRowIndex - 1][3] && !customTime) {
-        return ContentService.createTextOutput(JSON.stringify({
-          status: "error",
-          message: "すでに本日の退勤打刻が完了しています。"
-        })).setMimeType(ContentService.MimeType.JSON);
-      }
-      
-      userSheet.getRange(todayRowIndex, 4).setValue(timeStr);
-      let currentNote = rows[todayRowIndex - 1][5] || "";
-      if (customTime && rows[todayRowIndex - 1][3]) {
-        currentNote = currentNote ? currentNote + " 【退勤修正済】" : "【退勤修正済】";
-      }
-      if (note) currentNote = currentNote ? currentNote + " " + note : note;
-      userSheet.getRange(todayRowIndex, 6).setValue(currentNote);
+
+        showMessage("送信中...", "success");
+
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (result.status === "success") {
+                showMessage(result.message || "正常に記録されました。", "success");
+            } else {
+                if (result.message && result.message.includes("出勤打刻がされていません")) {
+                    const userInputTime = prompt(
+                        "エラー: 本日の出勤打刻がされていません。「出勤打刻を修正してから退勤してください。※一回のみ」\n\n修正する出勤時間を入力してください（例: 09:00）："
+                    );
+
+                    if (userInputTime) {
+                        submitAttendance(type, userInputTime, "【出勤修正済】");
+                        return;
+                    } else {
+                        showMessage("処理をキャンセルしました。", "error");
+                    }
+                } else {
+                    showMessage(result.message || "エラーが発生しました。", "error");
+                }
+            }
+        } catch (error) {
+            console.error(error);
+            showMessage("通信エラーが発生しました。", "error");
+        }
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "success",
-      message: "正常に記録されました。"
-    })).setMimeType(ContentService.MimeType.JSON);
-    
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "error",
-      message: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
+
+    function showMessage(text, type) {
+        const msgDiv = document.getElementById("message");
+        msgDiv.textContent = text;
+        msgDiv.className = type;
+        msgDiv.style.display = "block";
+    }
+</script>
+
+</body>
+</html>
