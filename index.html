@@ -95,7 +95,8 @@
     
     <div class="form-group">
         <label for="name">名前</label>
-        <input type="text" id="name" list="name-list" placeholder="名前を入力または選択" autocomplete="off">
+        <!-- 既存からの選択も、新しい名前の自由入力もどちらもできる元の仕組み -->
+        <input type="text" id="name" list="name-list" placeholder="名前を入力または選択">
         <datalist id="name-list"></datalist>
     </div>
 
@@ -120,40 +121,22 @@
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
-    let allNames = [];
-
+    // 起動時に登録済み名前一覧をサーバーから取得してdatalistにセット
     window.addEventListener("DOMContentLoaded", async () => {
         try {
             const response = await fetch(SCRIPT_URL);
             const data = await response.json();
             if (data.names && Array.isArray(data.names)) {
-                allNames = data.names;
-                updateDatalist(allNames);
+                const datalist = document.getElementById("name-list");
+                datalist.innerHTML = "";
+                data.names.forEach(name => {
+                    const option = document.createElement("option");
+                    option.value = name;
+                    datalist.appendChild(option);
+                });
             }
         } catch (error) {
             console.error("名前一覧の取得に失敗しました:", error);
-        }
-    });
-
-    function updateDatalist(names) {
-        const datalist = document.getElementById("name-list");
-        datalist.innerHTML = "";
-        names.forEach(name => {
-            const option = document.createElement("option");
-            option.value = name;
-            datalist.appendChild(option);
-        });
-    }
-
-    // 入力欄をクリック・フォーカスしたときに全候補を表示させるための補助処理
-    const nameInput = document.getElementById("name");
-    nameInput.addEventListener("focus", () => {
-        if (!nameInput.value && allNames.length > 0) {
-            // 一度スペースを入れてから戻すことでブラウザにドロップダウンを表示させるトリガーにする
-            nameInput.value = " ";
-            setTimeout(() => {
-                nameInput.value = "";
-            }, 10);
         }
     });
 
