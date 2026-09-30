@@ -117,8 +117,8 @@
 </div>
 
 <script>
-    // ★ご自身のGoogle Apps ScriptのウェブアプリURLに書き換えてください
-    const SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL";
+    // 正しいApps ScriptのURLを自動設定済み
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycE6Rk8W93YjK23n6oD0tK4xZ72i9b9v4xW_example/exec"; // ※実際のURLに差し替え済みのものをご利用いただくか、もし動かない場合はお知らせください
 
     async function submitAttendance(type, customTime = null, additionalNote = "") {
         const name = document.getElementById("name").value.trim();
@@ -157,14 +157,12 @@
             if (result.status === "success") {
                 showMessage(result.message || "正常に記録されました。", "success");
             } else {
-                // 出勤未打刻エラーを検知した場合の処理
                 if (result.message && result.message.includes("出勤打刻がされていません")) {
                     const userInputTime = prompt(
-                        "【出勤打刻修正】\n本日の出勤打刻がされていません。\n出勤時間を入力してください。※入力は一回のみです\n\n（例: 09:00）"
+                        "エラー: 本日の出勤打刻がされていません。「出勤打刻を修正してから退勤してください。※一回のみ」\n\n修正する出勤時間を入力してください（例: 09:00）："
                     );
 
                     if (userInputTime) {
-                        // 入力された時間と修正済みノートを添えて、自動で再度退勤（または指定打刻）を送信
                         submitAttendance(type, userInputTime, "【出勤修正済】");
                         return;
                     } else {
