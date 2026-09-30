@@ -95,6 +95,7 @@
     
     <div class="form-group">
         <label for="name">名前</label>
+        <!-- 自由入力と登録済み候補の表示を両立するdatalist仕様 -->
         <input type="text" id="name" list="name-list" placeholder="名前を入力または選択">
         <datalist id="name-list"></datalist>
     </div>
@@ -118,10 +119,9 @@
 </div>
 
 <script>
-    // ※あなたがお使いのGASウェブアプリのURLを正確に指定してください
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
-    // 起動時に登録済みの名前一覧を取得して自動補完（datalist）にセット
+    // 起動時にサーバーから登録済み名前一覧を取得してdatalistに反映する
     window.addEventListener("DOMContentLoaded", async () => {
         try {
             const response = await fetch(SCRIPT_URL);
