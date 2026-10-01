@@ -38,17 +38,23 @@
             color: #555;
             font-size: 14px;
         }
-        input, select {
+        select, input {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
             box-sizing: border-box;
             font-size: 16px;
+            background-color: #fff;
+        }
+        #new-name-group {
+            display: none;
+            margin-top: 10px;
         }
         .btn-container {
             display: flex;
             gap: 10px;
+            margin-top: 20px;
         }
         button {
             flex: 1;
@@ -94,10 +100,18 @@
     <h2>勤怠打刻システム</h2>
     
     <div class="form-group">
-        <label for="name">名前</label>
-        <!-- 既存からの選択も、新しい名前の自由入力もどちらもできる元の仕組み -->
-        <input type="text" id="name" list="name-list" placeholder="名前を入力または選択">
-        <datalist id="name-list"></datalist>
+        <label for="name-select">名前</label>
+        <!-- 以前のプルダウン形式（セレクトボックス） -->
+        <select id="name-select" onchange="handleNameChange()">
+            <option value="">名前を選択してください</option>
+            <option value="__NEW__">＋ 新規登録（新しい名前を入力）</option>
+        </select>
+    </div>
+
+    <!-- 「＋ 新規登録」が選ばれたときだけ出現する自由入力欄 -->
+    <div class="form-group" id="new-name-group">
+        <label for="new-name-input">新しい名前</label>
+        <input type="text" id="new-name-input" placeholder="スタッフの名前を入力">
     </div>
 
     <div class="form-group">
@@ -121,18 +135,26 @@
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
-    // 起動時に登録済み名前一覧をサーバーから取得してdatalistにセット
+    // 起動時に登録済み名前一覧をサーバーから取得してセレクトボックスに組み込む
     window.addEventListener("DOMContentLoaded", async () => {
         try {
             const response = await fetch(SCRIPT_URL);
             const data = await response.json();
             if (data.names && Array.isArray(data.names)) {
-                const datalist = document.getElementById("name-list");
-                datalist.innerHTML = "";
+                const select = document.getElementById("name-select");
+                
+                // 「名前を選択してください」と「＋ 新規登録」を残して既存の選択肢を一度クリア
+                select.innerHTML = `
+                    <option value="">名前を選択してください</option>
+                    <option value="__NEW__">＋ 新規登録（新しい名前を入力）</option>
+                `;
+
+                // 取得した名前をセレクトボックスに追加
                 data.names.forEach(name => {
                     const option = document.createElement("option");
                     option.value = name;
-                    datalist.appendChild(option);
+                    option.textContent = name;
+                    select.appendChild(option);
                 });
             }
         } catch (error) {
@@ -140,8 +162,29 @@
         }
     });
 
+    // プルダウンで「新規登録」が選ばれたときにテキスト入力を表示する切替処理
+    function handleNameChange() {
+        const select = document.getElementById("name-select");
+        const newGroup = document.getElementById("new-name-group");
+        if (select.value === "__NEW__") {
+            newGroup.style.display = "block";
+            document.getElementById("new-name-input").focus();
+        } else {
+            newGroup.style.display = "none";
+            document.getElementById("new-name-input").value = "";
+        }
+    }
+
     async function submitAttendance(type, customTime = null, additionalNote = "") {
-        const name = document.getElementById("name").value.trim();
+        const select = document.getElementById("name-select");
+        let name = "";
+
+        if (select.value === "__NEW__") {
+            name = document.getElementById("new-name-input").value.trim();
+        } else {
+            name = select.value.trim();
+        }
+
         const password = document.getElementById("password").value.trim();
         let note = document.getElementById("note").value.trim();
 
