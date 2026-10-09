@@ -47,9 +47,15 @@
             font-size: 16px;
             background-color: #fff;
         }
-        #new-name-group {
+        #new-name-group, #correction-group {
             display: none;
             margin-top: 10px;
+        }
+        #correction-group {
+            background-color: #fff8e1;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ffe0b2;
         }
         .btn-container {
             display: flex;
@@ -101,14 +107,12 @@
     
     <div class="form-group">
         <label for="name-select">名前</label>
-        <!-- 以前のプルダウン形式（セレクトボックス） -->
         <select id="name-select" onchange="handleNameChange()">
             <option value="">名前を選択してください</option>
             <option value="__NEW__">＋ 新規登録（新しい名前を入力）</option>
         </select>
     </div>
 
-    <!-- 「＋ 新規登録」が選ばれたときだけ出現する自由入力欄 -->
     <div class="form-group" id="new-name-group">
         <label for="new-name-input">新しい名前</label>
         <input type="text" id="new-name-input" placeholder="スタッフの名前を入力">
@@ -117,6 +121,13 @@
     <div class="form-group">
         <label for="password">パスワード</label>
         <input type="password" id="password" placeholder="パスワードを入力">
+    </div>
+
+    <!-- 未打刻時の退勤用：出勤時間修正の入力エリア（一時表示） -->
+    <div class="form-group" id="correction-group">
+        <label for="correction-time-input" style="color: #e65100;">⚠️ 出勤未登録です。修正する出勤時間を入力してください</label>
+        <input type="time" id="correction-time-input" style="background-color: #fff;">
+        <p style="font-size: 12px; color: #666; margin: 6px 0 0 0;">時間を入力後、もう一度「退勤」ボタンを押してください。</p>
     </div>
 
     <div class="form-group">
@@ -135,21 +146,16 @@
 <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykL2Tdlp1VTQezKbz7tayM5vf3dJnqQH-ZD1fI0NH7iRV2FlBAgLnHsi-g5YaI9nYKAQ/exec";
 
-    // 起動時に登録済み名前一覧をサーバーから取得してセレクトボックスに組み込む
     window.addEventListener("DOMContentLoaded", async () => {
         try {
             const response = await fetch(SCRIPT_URL);
             const data = await response.json();
             if (data.names && Array.isArray(data.names)) {
                 const select = document.getElementById("name-select");
-                
-                // 「名前を選択してください」と「＋ 新規登録」を残して既存の選択肢を一度クリア
                 select.innerHTML = `
                     <option value="">名前を選択してください</option>
                     <option value="__NEW__">＋ 新規登録（新しい名前を入力）</option>
                 `;
-
-                // 取得した名前をセレクトボックスに追加
                 data.names.forEach(name => {
                     const option = document.createElement("option");
                     option.value = name;
@@ -162,7 +168,6 @@
         }
     });
 
-    // プルダウンで「新規登録」が選ばれたときにテキスト入力を表示する切替処理
     function handleNameChange() {
         const select = document.getElementById("name-select");
         const newGroup = document.getElementById("new-name-group");
@@ -175,7 +180,7 @@
         }
     }
 
-    async function submitAttendance(type, customTime = null, additionalNote = "") {
+    async function submitAttendance(type) {
         const select = document.getElementById("name-select");
         let name = "";
 
@@ -193,10 +198,6 @@
             return;
         }
 
-        if (additionalNote) {
-            note = (note ? note + " " : "") + additionalNote;
-        }
-
         const payload = {
             name: name,
             password: password,
@@ -204,8 +205,17 @@
             note: note
         };
 
-        if (customTime) {
-            payload.customTime = customTime;
+        // 修正用入力欄に値が入っている場合は、出勤修正時間（customTime）として一緒に送信する
+        const correctionGroup = document.getElementById("correction-group");
+        const correctionInput = document.getElementById("correction-time-input");
+        if (type === "退勤" && correctionGroup.style.display === "block" && correctionInput.value) {
+            payload.customTime = correctionInput.value;
+            payload.note = (note ? note + " " : "") + "【出勤修正済】";
+        }
+
+        // 送信前に一度修正エリアを隠す（エラー再発防止）
+        if (type === "退勤" && correctionGroup.style.display === "block") {
+            correctionGroup.style.display = "none";
         }
 
         showMessage("送信中...", "success");
@@ -219,18 +229,13 @@
 
             if (result.status === "success") {
                 showMessage(result.message || "正常に記録されました。", "success");
+                correctionInput.value = "";
             } else {
+                // 出勤未登録エラーを検知した場合、ポップアップではなく画面上に修正用入力欄を表示する
                 if (result.message && result.message.includes("出勤打刻がされていません")) {
-                    const userInputTime = prompt(
-                        "エラー: 本日の出勤打刻がされていません。\n修正する出勤時間を入力してください（例: 09:00）："
-                    );
-
-                    if (userInputTime) {
-                        submitAttendance(type, userInputTime, "【出勤修正済】");
-                        return;
-                    } else {
-                        showMessage("処理をキャンセルしました。", "error");
-                    }
+                    correctionGroup.style.display = "block";
+                    correctionInput.focus();
+                    showMessage("出勤時間が未登録です。上の修正入力欄に時間を指定して再度「退勤」を押してください。", "error");
                 } else {
                     showMessage(result.message || "エラーが発生しました。", "error");
                 }
