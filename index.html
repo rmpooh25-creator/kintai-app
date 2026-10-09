@@ -208,14 +208,11 @@
         // 修正用入力欄に値が入っている場合は、出勤修正時間（customTime）として一緒に送信する
         const correctionGroup = document.getElementById("correction-group");
         const correctionInput = document.getElementById("correction-time-input");
-        if (type === "退勤" && correctionGroup.style.display === "block" && correctionInput.value) {
+        const isCorrectionVisible = (correctionGroup.style.display === "block");
+
+        if (type === "退勤" && isCorrectionVisible && correctionInput.value) {
             payload.customTime = correctionInput.value;
             payload.note = (note ? note + " " : "") + "【出勤修正済】";
-        }
-
-        // 送信前に一度修正エリアを隠す（エラー再発防止）
-        if (type === "退勤" && correctionGroup.style.display === "block") {
-            correctionGroup.style.display = "none";
         }
 
         showMessage("送信中...", "success");
@@ -230,13 +227,15 @@
             if (result.status === "success") {
                 showMessage(result.message || "正常に記録されました。", "success");
                 correctionInput.value = "";
+                correctionGroup.style.display = "none"; // 成功時に初めて非表示にする
             } else {
-                // 出勤未登録エラーを検知した場合、ポップアップではなく画面上に修正用入力欄を表示する
-                if (result.message && result.message.includes("出勤打刻がされていません")) {
+                // 出勤未登録エラーを検知した場合、画面上に修正用入力欄を表示する
+                if (result.message && result.message.includes("出勤時間が未登録です")) {
                     correctionGroup.style.display = "block";
                     correctionInput.focus();
-                    showMessage("出勤時間が未登録です。上の修正入力欄に時間を指定して再度「退勤」を押してください。", "error");
+                    showMessage(result.message, "error");
                 } else {
+                    correctionGroup.style.display = "none";
                     showMessage(result.message || "エラーが発生しました。", "error");
                 }
             }
